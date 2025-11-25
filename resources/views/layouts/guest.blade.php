@@ -216,7 +216,7 @@
                 .guest-card {
                     padding: 2rem 1.5rem;
                 }
-                
+
                 .form-links {
                     flex-direction: column;
                     gap: 1rem;
@@ -225,7 +225,7 @@
             }
         </style>
 
-        <!-- Scripts -->
+        <!-- Scripts - VITE CORREGIDO -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
@@ -246,5 +246,8 @@
                 {{ $slot }}
             </div>
         </div>
+
+        <!-- Scripts adicionales si es necesario -->
+        @stack('scripts')
     </body>
 </html>

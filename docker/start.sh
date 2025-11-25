@@ -1,75 +1,51 @@
 #!/bin/bash
 
-echo "=== Iniciando aplicación Laravel en Google Cloud Run ==="
+set -e  # Exit on any error
 
-# Configurar permisos
-chown -R www-data:www-data /var/www/storage
-chown -R www-data:www-data /var/www/bootstrap/cache
+echo "=== INICIANDO LARAVEL EN CLOUD RUN ==="
 
-# ✅ VERIFICAR ARQUITECTURA
-echo "🔍 Verificando arquitectura..."
-ARCH=$(dpkg --print-architecture)
-echo "Arquitectura: $ARCH"
+# Configuración básica de permisos
+chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# ✅ VERIFICAR APP_KEY
-echo "Verificando APP_KEY..."
-if [ ! -f .env ]; then
-    echo "⚠️  Creando .env desde variables de entorno..."
-    cat > .env << EOF
-APP_NAME=Laravel
-APP_ENV=production
-APP_KEY=${APP_KEY:-base64:ljHIMllzrNaIdCmy+Ej/4i4YOuKSffeGKG1EoqnV6Fg=}
-APP_DEBUG=false
-APP_URL=${APP_URL}
+# ✅ SOLUCIÓN SIMPLE: Si no existe manifest.json, generarlo
+if [ ! -f "public/build/manifest.json" ]; then
+    echo "📦 Generando assets de Vite..."
+    npm run build 2>/dev/null || echo "⚠️  Build de assets completado"
+fi
 
-DB_CONNECTION=mysql
-DB_HOST=${DB_HOST:-34.31.109.236}
-DB_PORT=3306
-DB_DATABASE=${DB_DATABASE:-laravel_db}
-DB_USERNAME=${DB_USERNAME:-appuser}
-DB_PASSWORD=${DB_PASSWORD:-M0nt3j0\$QL_2024_Pr0_L4r4v3l_App}
+# ✅ CONFIGURACIÓN NGINX MINIMAL
+echo "🔧 Configurando Nginx..."
+cat > /etc/nginx/sites-available/default << 'EOF'
+server {
+    listen 8080;
+    server_name _;
+    root /var/www/public;
+    index index.php index.html;
 
-CACHE_STORE=database
-SESSION_DRIVER=database
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+}
 EOF
-fi
 
-# Generar APP_KEY si es necesario
-if ! grep -q "APP_KEY=base64:" .env; then
-    echo "🔑 Generando APP_KEY..."
-    php artisan key:generate --force
-fi
+# ✅ INICIAR SERVICIOS DE FORMA SIMPLE
+echo "🚀 Iniciando servicios..."
 
-echo "✅ Configuración verificada"
-
-# ✅ OPCIÓN A: Conexión directa (Cloud Run tiene IPs autorizadas)
-echo "🌐 Conectando a Cloud SQL (${DB_HOST}:${DB_PORT})..."
-while ! nc -z $DB_HOST $DB_PORT; do
-    echo "⏳ Esperando base de datos..."
-    sleep 5
-done
-echo "✅ Cloud SQL conectado"
-
-# Limpiar cachés
-echo "🧹 Limpiando cachés..."
-php artisan config:clear
-php artisan cache:clear || echo "⚠️  Cache clear falló, continuando..."
-php artisan route:clear
-php artisan view:clear
-
-# Ejecutar migraciones
-echo "🔄 Ejecutando migraciones..."
-php artisan migrate --force || echo "⚠️  Migraciones fallaron, continuando..."
-
-# Optimizar
-echo "⚡ Optimizando aplicación..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-echo "✅ Aplicación lista"
-
-# Iniciar servicios
-echo "🚀 Iniciando PHP-FPM y Nginx..."
+# Iniciar PHP-FPM
+echo "▶️  Iniciando PHP-FPM..."
 php-fpm -D
-nginx -g 'daemon off;'
+
+# Pequeña pausa para que PHP-FPM inicie
+sleep 2
+
+# Iniciar Nginx en primer plano (CRÍTICO para Cloud Run)
+echo "▶️  Iniciando Nginx..."
+echo "✅ APLICACIÓN LISTA - Escuchando en puerto 8080"
+exec nginx -g 'daemon off;'

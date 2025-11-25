@@ -8,6 +8,7 @@
     <title>AquaCentinel - @yield('title', 'Dashboard')</title>
     <meta name="description" content="Sistema IoT para monitoreo inteligente de calidad del agua en tiempo real. Mide pH, turbidez, TDS y temperatura mediante boya conectada a la nube.">
     <link rel="icon" type="image/png" href="{{ asset('images/icon-aquacentinel.png') }}">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,18 +118,18 @@
                 position: fixed;
                 height: 100vh;
             }
-            
+
             .sidebar.mobile-open {
                 transform: translateX(0);
             }
-            
+
             .page-content {
                 padding: 1rem;
             }
         }
     </style>
 
-    <!-- Scripts -->
+    <!-- Scripts - VITE SIMPLIFICADO Y CORRECTO -->
     @vite([
         'resources/css/app.css',
         'resources/css/main.css',

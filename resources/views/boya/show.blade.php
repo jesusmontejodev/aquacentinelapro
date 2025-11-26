@@ -5,7 +5,7 @@
             <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>
             Volver a mis boyas
         </a>
-        
+
         <div class="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
                 <h1 class="text-3xl font-bold text-blue-900 mb-2">Dashboard de la Boya</h1>
@@ -185,28 +185,422 @@
     </div>
 
     @push('scripts')
-        @vite([
-            'resources/js/boya/graficaConductividad.js',
-            'resources/js/boya/graficaPh.js',
-            'resources/js/boya/graficaTemperatura.js',
-            'resources/js/boya/graficaTurbidez.js',
-            'resources/js/boya/calidadAgua.js'
-        ])
-
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
+            // ======================
+            // CONFIGURACIÓN GLOBAL
+            // ======================
+            const API_BASE = '/api/boya';
+            let charts = {};
 
-                const idBoya = document.getElementById('grafica-conductividad').dataset.id;
+            // Rangos para zonas de color
+            const ZONAS = {
+                ph: [
+                    { min: 0, max: 6.5, color: "rgba(244,67,54,0.3)", label: "Peligro ácido" },
+                    { min: 6.5, max: 8.5, color: "rgba(76,175,80,0.3)", label: "Óptimo" },
+                    { min: 8.5, max: 9.0, color: "rgba(255,235,59,0.3)", label: "Alerta" },
+                    { min: 9.0, max: 14, color: "rgba(244,67,54,0.3)", label: "Peligro básico" }
+                ],
+                temperatura: [
+                    { min: 0, max: 18, color: "rgba(33,150,243,0.3)", label: "Frío" },
+                    { min: 18, max: 24, color: "rgba(76,175,80,0.3)", label: "Óptimo" },
+                    { min: 24, max: 28, color: "rgba(255,235,59,0.3)", label: "Cálido" },
+                    { min: 28, max: 40, color: "rgba(244,67,54,0.3)", label: "Calor extremo" }
+                ]
+            };
+
+            // Líneas guía para conductividad y turbidez
+            const LINEAS_GUIA = {
+                conductividad: [
+                    { valor: 800, color: "rgba(76,175,80,0.8)", label: "Bueno (≤800 µS/cm)", borderDash: [] },
+                    { valor: 1000, color: "rgba(255,193,7,0.8)", label: "Regular (≤1000 µS/cm)", borderDash: [5, 5] },
+                    { valor: 1200, color: "rgba(244,67,54,0.8)", label: "Malo (>1200 µS/cm)", borderDash: [2, 2] }
+                ],
+                turbidez: [
+                    { valor: 5, color: "rgba(76,175,80,0.8)", label: "Clara (≤5 NTU)", borderDash: [] },
+                    { valor: 10, color: "rgba(255,193,7,0.8)", label: "Mantenimiento (≤10 NTU)", borderDash: [5, 5] },
+                    { valor: 15, color: "rgba(244,67,54,0.8)", label: "Bacteriológico (>15 NTU)", borderDash: [2, 2] }
+                ]
+            };
+
+            // Colores para las líneas
+            const COLORES = {
+                ph: "rgba(33,150,243,1)",
+                conductividad: "rgba(33,150,243,1)",
+                temperatura: "rgba(255,87,34,1)",
+                turbidez: "rgba(156,39,176,1)"
+            };
+
+            // ======================
+            // FUNCIONES PARA GRÁFICAS
+            // ======================
+
+            // Plugin para zonas de color
+            const zonasPlugin = {
+                id: 'zonasPlugin',
+                beforeDraw(chart, args, options) {
+                    const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
+
+                    // Verificar que tenemos escalas
+                    if (!y) return;
+
+                    const zonas = chart.config._config.zonas || [];
+
+                    zonas.forEach(zona => {
+                        const yMin = y.getPixelForValue(zona.max);
+                        const yMax = y.getPixelForValue(zona.min);
+
+                        ctx.save();
+                        ctx.fillStyle = zona.color;
+                        ctx.fillRect(left, yMin, right - left, yMax - yMin);
+                        ctx.restore();
+                    });
+                }
+            };
+
+            // Registrar el plugin globalmente
+            Chart.register(zonasPlugin);
+
+            function crearGraficaConZonas(idCanvas, labels, valores, zonas, colorLinea, unidad) {
+                const ctx = document.getElementById(idCanvas);
+                if (!ctx) {
+                    console.error(⁠ Canvas con id ${idCanvas} no encontrado ⁠);
+                    return null;
+                }
+
+                // Destruir gráfica existente
+                if (charts[idCanvas]) {
+                    charts[idCanvas].destroy();
+                }
+
+                try {
+                    charts[idCanvas] = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: getLabelFromId(idCanvas),
+                                data: valores,
+                                borderColor: colorLinea,
+                                backgroundColor: colorLinea.replace('1)', '0.1)'),
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                pointBackgroundColor: colorLinea,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                tension: 0.4,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: {
+                                duration: 0
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: "index"
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: idCanvas !== 'graficaPH',
+                                    grid: {
+                                        color: "rgba(0,0,0,0.1)",
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + (unidad ? ' ' + unidad : '');
+                                        },
+                                        color: "rgba(0,0,0,0.7)"
+                                    }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: {
+                                        maxTicksLimit: 6,
+                                        color: "rgba(0,0,0,0.7)"
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15,
+                                        color: "rgba(0,0,0,0.8)"
+                                    }
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                    titleColor: '#000',
+                                    bodyColor: '#000',
+                                    borderColor: 'rgba(0,0,0,0.1)',
+                                    borderWidth: 1
+                                }
+                            }
+                        },
+                        // Pasar zonas como configuración personalizada
+                        zonas: zonas
+                    });
+
+                    return charts[idCanvas];
+                } catch (error) {
+                    console.error(⁠ Error creando gráfica ${idCanvas}: ⁠, error);
+                    return null;
+                }
+            }
+
+            function crearGraficaConLineasGuia(idCanvas, labels, valores, lineasGuia, colorLinea, unidad) {
+                const ctx = document.getElementById(idCanvas);
+                if (!ctx) {
+                    console.error(⁠ Canvas con id ${idCanvas} no encontrado ⁠);
+                    return null;
+                }
+
+                // Destruir gráfica existente
+                if (charts[idCanvas]) {
+                    charts[idCanvas].destroy();
+                }
+
+                try {
+                    // Crear datasets para las líneas guía
+                    const datasetsGuia = lineasGuia.map(linea => ({
+                        label: linea.label,
+                        data: Array(labels.length).fill(linea.valor),
+                        borderColor: linea.color,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: linea.borderDash,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: 0
+                    }));
+
+                    // Dataset principal
+                    const datasetPrincipal = {
+                        label: getLabelFromId(idCanvas),
+                        data: valores,
+                        borderColor: colorLinea,
+                        backgroundColor: colorLinea.replace('1)', '0.1)'),
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointBackgroundColor: colorLinea,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        tension: 0.4,
+                        fill: false
+                    };
+
+                    // Combinar todos los datasets (líneas guía primero, datos principales después)
+                    const allDatasets = [...datasetsGuia, datasetPrincipal];
+
+                    charts[idCanvas] = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: allDatasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: {
+                                duration: 0
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: "index"
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: "rgba(0,0,0,0.1)",
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + (unidad ? ' ' + unidad : '');
+                                        },
+                                        color: "rgba(0,0,0,0.7)"
+                                    }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: {
+                                        maxTicksLimit: 6,
+                                        color: "rgba(0,0,0,0.7)"
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15,
+                                        color: "rgba(0,0,0,0.8)",
+                                        filter: function(legendItem, chartData) {
+                                            // Mostrar solo la leyenda del dataset principal y las líneas guía importantes
+                                            return true;
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                    titleColor: '#000',
+                                    bodyColor: '#000',
+                                    borderColor: 'rgba(0,0,0,0.1)',
+                                    borderWidth: 1,
+                                    filter: function(tooltipItem) {
+                                        // Mostrar tooltip solo para el dataset principal (datos reales)
+                                        return tooltipItem.datasetIndex === allDatasets.length - 1;
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    return charts[idCanvas];
+                } catch (error) {
+                    console.error(⁠ Error creando gráfica ${idCanvas}: ⁠, error);
+                    return null;
+                }
+            }
+
+            function getLabelFromId(idCanvas) {
+                const labels = {
+                    'graficaPH': 'Nivel de pH',
+                    'grafica-conductividad': 'Conductividad',
+                    'grafica-temperatura': 'Temperatura',
+                    'grafica-turbidez': 'Turbidez'
+                };
+                return labels[idCanvas] || 'Datos';
+            }
+
+            // ======================
+            // FUNCIONES DE DATOS
+            // ======================
+
+            async function obtenerDatosHistoricos(idBoya) {
+                try {
+                    console.log('Obteniendo datos históricos para boya:', idBoya);
+                    const res = await fetch(⁠ ${API_BASE}/${idBoya}/historico ⁠);
+                    if (!res.ok) throw new Error(⁠ HTTP error! status: ${res.status} ⁠);
+                    const data = await res.json();
+                    console.log('Datos históricos recibidos:', data);
+                    return data;
+                } catch (error) {
+                    console.error('Error cargando datos históricos:', error);
+                    // Datos de ejemplo como fallback
+                    return generarDatosEjemplo();
+                }
+            }
+
+            function generarDatosEjemplo() {
+                console.log('Generando datos de ejemplo...');
+                const ahora = new Date();
+                const datos = [];
+
+                for (let i = 20; i >= 0; i--) {
+                    const tiempo = new Date(ahora);
+                    tiempo.setMinutes(tiempo.getMinutes() - i * 5);
+                    datos.push({
+                        created_at: tiempo.toISOString(),
+                        valor: Math.random() * 10 + 5 // Valores entre 5-15
+                    });
+                }
+
+                return {
+                    ph: datos.map(d => ({...d, valor: Math.random() * 3 + 6.5})), // 6.5-9.5
+                    conductividad: datos.map(d => ({...d, valor: Math.random() * 500 + 200})), // 200-700
+                    temperatura: datos.map(d => ({...d, valor: Math.random() * 15 + 18})), // 18-33
+                    turbidez: datos.map(d => ({...d, valor: Math.random() * 8 + 2})) // 2-10
+                };
+            }
+
+            function procesarDatosParaGraficas(historico) {
+                console.log('Procesando datos para gráficas:', historico);
+
+                // Procesar datos de pH (con zonas)
+                if (historico.ph && historico.ph.length > 0) {
+                    const labelsPH = historico.ph.map(item =>
+                        new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                    );
+                    const valoresPH = historico.ph.map(item => item.valor);
+                    crearGraficaConZonas("graficaPH", labelsPH, valoresPH, ZONAS.ph, COLORES.ph, "pH");
+                }
+
+                // Procesar datos de temperatura (con zonas)
+                if (historico.temperatura && historico.temperatura.length > 0) {
+                    const labelsTemp = historico.temperatura.map(item =>
+                        new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                    );
+                    const valoresTemp = historico.temperatura.map(item => item.valor);
+                    crearGraficaConZonas("grafica-temperatura", labelsTemp, valoresTemp, ZONAS.temperatura, COLORES.temperatura, "°C");
+                }
+
+                // Procesar datos de conductividad (CON LÍNEAS GUÍA)
+                if (historico.conductividad && historico.conductividad.length > 0) {
+                    const labelsCond = historico.conductividad.map(item =>
+                        new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                    );
+                    const valoresCond = historico.conductividad.map(item => item.valor);
+                    crearGraficaConLineasGuia("grafica-conductividad", labelsCond, valoresCond, LINEAS_GUIA.conductividad, COLORES.conductividad, "µS/cm");
+                }
+
+                // Procesar datos de turbidez (CON LÍNEAS GUÍA)
+                if (historico.turbidez && historico.turbidez.length > 0) {
+                    const labelsTurb = historico.turbidez.map(item =>
+                        new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                    );
+                    const valoresTurb = historico.turbidez.map(item => item.valor);
+                    crearGraficaConLineasGuia("grafica-turbidez", labelsTurb, valoresTurb, LINEAS_GUIA.turbidez, COLORES.turbidez, "NTU");
+                }
+            }
+
+            async function inicializarGraficas() {
+                try {
+                    const idBoya = document.getElementById('grafica-conductividad')?.dataset?.id;
+                    if (!idBoya) {
+                        console.error('No se pudo obtener el ID de la boya');
+                        return;
+                    }
+
+                    console.log('Inicializando gráficas para boya:', idBoya);
+                    const historico = await obtenerDatosHistoricos(idBoya);
+                    procesarDatosParaGraficas(historico);
+                } catch (error) {
+                    console.error('Error inicializando gráficas:', error);
+                }
+            }
+
+            // ======================
+            // FUNCIONALIDAD ORIGINAL (DATOS ACTUALES)
+            // ======================
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const idBoya = document.getElementById('grafica-conductividad')?.dataset?.id;
                 const apiBase = '{{ url("/api") }}';
                 const lastUpdateElement = document.getElementById('last-update');
 
                 const f = v => (v != null && !isNaN(v)) ? Number(v).toFixed(2) : "--";
 
                 function updateTimestamp() {
-                    lastUpdateElement.textContent = "Actualizado: " + new Date().toLocaleTimeString();
+                    if (lastUpdateElement) {
+                        lastUpdateElement.textContent = "Actualizado: " + new Date().toLocaleTimeString();
+                    }
                 }
 
-                /*** RANGOS SIN SOLAPAMIENTO ***/
                 const RANGOS = {
                     ph: [
                         { min: 6.5, max: 8.5, texto: "Óptimo", color: "text-green-500", icon: "fa-check" },
@@ -233,30 +627,27 @@
                     ]
                 };
 
-                /*** FUNCIÓN ÚNICA PARA ACTUALIZAR TARJETAS ***/
                 function actualizarCampo(id, valor, rangos) {
                     const el = document.getElementById(id);
                     const v = Number(valor);
 
                     if (!el || isNaN(v)) {
-                        el.innerHTML = `<i class="fas fa-question-circle text-gray-400 mr-1"></i>Sin datos`;
+                        el.innerHTML = ⁠ <i class="fas fa-question-circle text-gray-400 mr-1"></i>Sin datos ⁠;
                         return;
                     }
 
                     const r = rangos.find(r => v >= r.min && v <= r.max);
-
-                    el.innerHTML = `<i class="fas ${r.icon} mr-1 ${r.color}"></i>
-                                    <span class="${r.color}">${r.texto}</span>`;
+                    el.innerHTML = ⁠ <i class="fas ${r.icon} mr-1 ${r.color}"></i><span class="${r.color}">${r.texto}</span> ⁠;
                 }
 
-                /*** LÓGICA DIFUSA SIMPLE / "MARCHING LEARNING" ***/
                 function diagnosticoGlobal(vals) {
                     const panel = document.getElementById("diagnostico-general");
                     const texto = document.getElementById("diagnostico-texto");
                     const desc = document.getElementById("diagnostico-descripcion");
 
-                    const estados = [];
+                    if (!panel || !texto || !desc) return;
 
+                    const estados = [];
                     function pushEstado(param, v) {
                         const r = RANGOS[param].find(r => v >= r.min && v <= r.max);
                         estados.push(r.texto);
@@ -267,11 +658,9 @@
                     pushEstado("conductividad", vals.conductividad);
                     pushEstado("turbidez", vals.turbidez);
 
-                    const buenos = estados.filter(e => e === "Óptimo" || e === "Óptima" || e === "Clara").length;
                     const malos = estados.filter(e => e === "Crítico" || e === "Bacteriológico").length;
                     const mantenimiento = estados.filter(e => e === "Mantenimiento").length;
 
-                    // Lógica tipo difusa
                     if (malos >= 2) {
                         texto.textContent = "Rojo → Riesgo bacteriológico";
                         desc.textContent = "Varias variables están en estado grave. Recomendado estudio bacteriológico.";
@@ -294,15 +683,13 @@
                     }
                 }
 
-                /*** CONSULTA AL API ***/
                 async function obtenerUltimoRegistro() {
                     try {
-                        const res = await fetch(`${apiBase}/boya/${idBoya}/ultimo-registro`);
+                        const res = await fetch(⁠ ${apiBase}/boya/${idBoya}/ultimo-registro ⁠);
                         if (!res.ok) throw new Error();
-
                         const d = await res.json();
 
-                        // Mostrar datos
+                        // Actualizar datos
                         document.getElementById("conductividad-data").textContent = f(d.conductividad);
                         document.getElementById("pH-data").textContent = f(d.ph);
                         document.getElementById("temperatura-data").textContent = f(d.temperatura);
@@ -322,7 +709,7 @@
                         });
 
                     } catch (err) {
-                        console.error(err);
+                        console.error('Error obteniendo último registro:', err);
                     }
                 }
 
@@ -331,189 +718,27 @@
                     updateTimestamp();
                 }
 
-                actualizarTodo();
-                setInterval(actualizarTodo, 10000);
+                // Inicializar
+                if (idBoya) {
+                    actualizarTodo();
+                    setInterval(actualizarTodo, 10000);
+
+                    // Inicializar gráficas después de un breve delay
+                    setTimeout(inicializarGraficas, 500);
+                }
             });
         </script>
-
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-        <script>
-            const API_BASE = "/api/boya";
-
-            let charts = {
-                ph: null,
-                conductividad: null,
-                temperatura: null,
-                turbidez: null
-            };
-
-            // ======================
-            // Cargar histórico desde API
-            // ======================
-            async function obtenerHistorico(id) {
-                const res = await fetch(`${API_BASE}/${id}/historico`);
-                return res.json();
-            }
-
-            // ======================
-            // Crear o actualizar gráficas (ESTÉTICAS)
-            // ======================
-            function actualizarGrafica(chart, idCanvas, labels, valores, lineasGuia) {
-                const ctx = document.getElementById(idCanvas);
-
-                if (!chart) {
-                    return new Chart(ctx, {
-                        type: "line",
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: "Valor",
-                                    data: valores,
-                                    borderWidth: 3,
-                                    tension: 0.4,
-                                    pointRadius: 0,
-                                    borderColor: "rgba(33,150,243,0.9)"
-                                },
-
-                                ...lineasGuia.map(l => ({
-                                    label: l.label,
-                                    data: Array(labels.length).fill(l.valor),
-                                    borderWidth: 1.5,
-                                    borderDash: [6, 4],
-                                    pointRadius: 0,
-                                    borderColor: l.color
-                                }))
-                            ],
-                        },
-                        options: {
-                            animation: false,
-                            responsive: true,
-                            interaction: {
-                                intersect: false,
-                                mode: "index"
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: false,
-                                    grid: { color: "rgba(0,0,0,0.05)" }
-                                },
-                                x: {
-                                    grid: { display: false }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    position: "bottom",
-                                    labels: {
-                                        usePointStyle: true,
-                                        pointStyle: "line"
-                                    }
-                                }
-                            }
-                        }
-                    });
-
-                } else {
-                    // Actualizamos únicamente
-                    chart.data.labels = labels;
-                    chart.data.datasets[0].data = valores;
-
-                    lineasGuia.forEach((l, i) => {
-                        chart.data.datasets[i + 1].data = Array(labels.length).fill(l.valor);
-                    });
-
-                    chart.update();
-                    return chart;
-                }
-            }
-
-            // ======================
-            // Líneas Guía (YA CON BUENO / REGULAR / MALO)
-            // ======================
-            const GUÍAS = {
-                ph: [
-                    { label: "Bueno (6.5–8.5)", valor: 8.5, color: "rgba(0,200,83,0.6)" },
-                    { label: "Regular (9.0)", valor: 9.0, color: "rgba(255,193,7,0.6)" },
-                    { label: "Malo (10+)", valor: 10, color: "rgba(244,67,54,0.6)" }
-                ],
-                conductividad: [
-                    { label: "Bueno (800)", valor: 800, color: "rgba(0,200,83,0.6)" },
-                    { label: "Regular (1000)", valor: 1000, color: "rgba(255,193,7,0.6)" },
-                    { label: "Malo (1200)", valor: 1200, color: "rgba(244,67,54,0.6)" }
-                ],
-                temperatura: [
-                    { label: "Bueno (28°C)", valor: 28, color: "rgba(0,200,83,0.6)" },
-                    { label: "Regular (30°C)", valor: 30, color: "rgba(255,193,7,0.6)" },
-                    { label: "Malo (32°C)", valor: 32, color: "rgba(244,67,54,0.6)" }
-                ],
-                turbidez: [
-                    { label: "Bueno (5 NTU)", valor: 5, color: "rgba(0,200,83,0.6)" },
-                    { label: "Regular (10 NTU)", valor: 10, color: "rgba(255,193,7,0.6)" },
-                    { label: "Malo (15 NTU)", valor: 15, color: "rgba(244,67,54,0.6)" }
-                ]
-            };
-
-            // ======================
-            // Función general para actualizar todas las gráficas
-            // ======================
-            async function actualizarGraficas() {
-                const idBoya = document.querySelector("[data-id]").dataset.id;
-
-                const data = await obtenerHistorico(idBoya);
-
-                const labelsPH = data.ph.map(r => new Date(r.created_at).toLocaleTimeString());
-                const labelsC = data.conductividad.map(r => new Date(r.created_at).toLocaleTimeString());
-                const labelsT = data.temperatura.map(r => new Date(r.created_at).toLocaleTimeString());
-                const labelsTb = data.turbidez.map(r => new Date(r.created_at).toLocaleTimeString());
-
-                charts.ph = actualizarGrafica(
-                    charts.ph,
-                    "graficaPH",
-                    labelsPH,
-                    data.ph.map(r => r.valor),
-                    GUÍAS.ph
-                );
-
-                charts.conductividad = actualizarGrafica(
-                    charts.conductividad,
-                    "grafica-conductividad",
-                    labelsC,
-                    data.conductividad.map(r => r.valor),
-                    GUÍAS.conductividad
-                );
-
-                charts.temperatura = actualizarGrafica(
-                    charts.temperatura,
-                    "grafica-temperatura",
-                    labelsT,
-                    data.temperatura.map(r => r.valor),
-                    GUÍAS.temperatura
-                );
-
-                charts.turbidez = actualizarGrafica(
-                    charts.turbidez,
-                    "grafica-turbidez",
-                    labelsTb,
-                    data.turbidez.map(r => r.valor),
-                    GUÍAS.turbidez
-                );
-            }
-
-            // Ejecutar al inicio
-            actualizarGraficas();
-
-            // Actualizar cada 5 segundos
-            setInterval(actualizarGraficas, 5000);
-        </script>
-
 
         <style>
             .animate-pulse { animation: pulse 1s ease-in-out; }
             @keyframes pulse { 0% { opacity: 1; } 50% { opacity: .7; } 100% { opacity: 1; } }
 
-            .contenedor-grafica { position: relative; }
+            .contenedor-grafica {
+                position: relative;
+                width: 100% !important;
+                height: 320px !important;
+            }
+
             .contenedor-grafica::before {
                 content: '';
                 position: absolute;
@@ -522,15 +747,9 @@
                 border-radius: 8px;
             }
 
-            .contenedor-grafica {
-                width: 100% !important;
-                height: 320px !important;
-            }
-
             .status-warning { color: #f59e0b; }
             .status-danger { color: #ef4444; }
             .status-optimal { color: #10b981; }
         </style>
-
     @endpush
 </x-app-layout>

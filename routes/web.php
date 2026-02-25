@@ -22,10 +22,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-
     Route::resource('/boya', BoyaController::class);
 
-
+    // Rutas de reclamación de boyas
+    Route::get('/boya/claim', [BoyaController::class, 'claim'])->name('boya.claim');
+    Route::post('/boya/claim', [BoyaController::class, 'claimStore'])->name('boya.claim.store');
 });
 
 // Rutas de administración (solo para administradores)

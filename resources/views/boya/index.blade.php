@@ -76,10 +76,10 @@
                         <p class="text-gray-600 mb-8 max-w-md mx-auto">
                             Comienza agregando tu primera boya inteligente para monitorear la calidad del agua en tiempo real.
                         </p>
-                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
+                        <a href="{{ route('boya.claim') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                             <i class="fas fa-plus mr-2"></i>
-                            Agregar Primera Boya
-                        </button>
+                            Reclamar Primera Boya
+                        </a>
                     </div>
                 </div>
             @endforelse
@@ -124,26 +124,32 @@
                 @endif
 
                 <!-- Formulario -->
-                <form action="" method="POST" class="space-y-6 max-w-2xl">
+                <form action="{{ route('boya.claim.store') }}" method="POST" class="space-y-6 max-w-2xl">
                     @csrf
 
                     <!-- Campo de Código -->
                     <div>
-                        <label for="codigo_boya" class="block text-gray-700 font-semibold mb-3 text-lg">
+                        <label for="codigo_de_canjeo" class="block text-gray-700 font-semibold mb-3 text-lg">
                             <i class="fas fa-qrcode mr-2 text-blue-500"></i>
                             Código de la Boya
                         </label>
                         <div class="relative">
                             <input type="text" 
-                                   name="codigo_boya" 
-                                   id="codigo_boya"
+                                   name="codigo_de_canjeo" 
+                                   id="codigo_de_canjeo"
                                    placeholder="Ejemplo: BYA-2025-XYZ-123"
-                                   class="w-full border-2 border-gray-200 rounded-xl px-5 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all duration-200 text-lg"
+                                   class="w-full border-2 border-gray-200 rounded-xl px-5 py-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all duration-200 text-lg @error('codigo_de_canjeo') border-red-500 @enderror"
                                    required>
                             <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <i class="fas fa-key text-gray-400"></i>
                             </div>
                         </div>
+                        @error('codigo_de_canjeo')
+                            <p class="text-red-600 text-sm mt-2 flex items-center">
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                                {{ $message }}
+                            </p>
+                        @enderror
                         <p class="text-gray-500 text-sm mt-2 flex items-center">
                             <i class="fas fa-info-circle mr-2 text-blue-500"></i>
                             Encuentra este código en la etiqueta de tu boya o en la documentación
@@ -155,14 +161,14 @@
                         <button type="submit"
                                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center">
                             <i class="fas fa-sync-alt mr-3"></i>
-                            Sincronizar Boya
+                            Reclamar Boya
                         </button>
                         
-                        <button type="button"
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-8 py-4 rounded-xl transition-all duration-200 flex items-center justify-center">
-                            <i class="fas fa-question-circle mr-3"></i>
-                            ¿Dónde encuentro el código?
-                        </button>
+                        <a href="{{ route('boya.claim') }}"
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-8 py-4 rounded-xl transition-all duration-200 flex items-center justify-center text-center">
+                            <i class="fas fa-window-maximize mr-3"></i>
+                            Formulario Completo
+                        </a>
                     </div>
                 </form>
 

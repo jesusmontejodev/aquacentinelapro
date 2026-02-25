@@ -60,7 +60,13 @@
                                                 {{ $boya->modelo }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                {{ $boya->user->name ?? 'N/A' }}
+                                                @if($boya->id_user)
+                                                    {{ $boya->user->name }}
+                                                @else
+                                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full text-xs font-semibold">
+                                                        Sin asignar
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <span class="text-xs text-gray-600 dark:text-gray-400">

@@ -23,10 +23,10 @@
                         <!-- Usuario -->
                         <div>
                             <label for="id_user" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Usuario
+                                Usuario (Opcional)
                             </label>
-                            <select id="id_user" name="id_user" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" required>
-                                <option value="">Selecciona un usuario</option>
+                            <select id="id_user" name="id_user" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                                <option value="">Sin asignar (para reclamar después)</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ $boya->id_user === $user->id ? 'selected' : '' }}>
                                         {{ $user->name }} ({{ $user->email }})
@@ -36,6 +36,9 @@
                             @error('id_user')
                                 <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Deja vacío si deseas que un usuario reclame la boya con el código
+                            </p>
                         </div>
 
                         <!-- Código de Canjeo -->

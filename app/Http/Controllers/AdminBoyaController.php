@@ -32,7 +32,7 @@ class AdminBoyaController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_user' => 'required|exists:users,id',
+            'id_user' => 'nullable|exists:users,id',
             'codigo_de_canjeo' => 'required|string|unique:boyas',
             'nombre' => 'required|string|max:255',
             'latitud' => 'required|numeric',

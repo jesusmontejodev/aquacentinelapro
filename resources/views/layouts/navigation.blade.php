@@ -15,12 +15,41 @@
             {{ __('Dashboard') }}
         </x-nav-link>
 
+        <!-- Mis Boyas (disponible para todos) -->
         <x-nav-link :href="route('boya.index')" :active="request()->routeIs('boya.*')">
             <i class="fas fa-water w-5 mr-3 text-center"></i>
             {{ __('Mis Boyas') }}
         </x-nav-link>
-        
 
+        <!-- Rutas de Usuario Normal -->
+        @if(!Auth::user()->isAdmin())
+            <x-nav-link :href="route('boya.claim')" :active="request()->routeIs('boya.claim')">
+                <i class="fas fa-gift w-5 mr-3 text-center"></i>
+                {{ __('Reclamar Boya') }}
+            </x-nav-link>
+        @endif
+
+        <!-- Rutas de Administrador -->
+        @if(Auth::user()->isAdmin())
+            <div class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">
+                Administración
+            </div>
+
+            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
+                <i class="fas fa-tachometer-alt w-5 mr-3 text-center"></i>
+                {{ __('Panel Admin') }}
+            </x-nav-link>
+
+            <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users*')">
+                <i class="fas fa-users w-5 mr-3 text-center"></i>
+                {{ __('Usuarios') }}
+            </x-nav-link>
+
+            <x-nav-link :href="route('admin.boyas.index')" :active="request()->routeIs('admin.boyas*')">
+                <i class="fas fa-water w-5 mr-3 text-center"></i>
+                {{ __('Gestionar Boyas') }}
+            </x-nav-link>
+        @endif
     </div>
 
     <!-- User Section -->

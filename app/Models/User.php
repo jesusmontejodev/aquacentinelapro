@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 use App\Models\Boya;
+use App\Enums\UserRole;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -23,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -45,11 +47,36 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
     }
 
     public function boya(){
         return $this->hasMany(Boya::class, 'id_user');
+    }
+
+    /**
+     * Verificar si el usuario es administrador
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::ADMIN;
+    }
+
+    /**
+     * Verificar si el usuario es de mantenimiento
+     */
+    public function isMaintenance(): bool
+    {
+        return $this->role === UserRole::MAINTENANCE;
+    }
+
+    /**
+     * Verificar si el usuario es normal
+     */
+    public function isUser(): bool
+    {
+        return $this->role === UserRole::USER;
     }
 
 }

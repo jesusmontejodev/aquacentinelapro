@@ -1,138 +1,274 @@
 <x-app-layout>
-    <div class="p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">Monitoreo de Boya</h1>
-            <span id="last-update" class="text-sm text-gray-500">Cargando...</span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="p-4 bg-white shadow rounded">
-                <p class="text-sm text-gray-500">Conductividad</p>
-                <p id="conductividad-data" class="text-xl font-bold">--</p>
-                <div id="conductividad-status" class="text-xs"></div>
+    <div class="mb-8">
+        <a href="{{ route('boya.index') }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 mb-6 group">
+            <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Volver a mis boyas
+        </a>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-900 mb-2">Dashboard de la Boya</h1>
+                <p class="text-gray-600 text-lg">Monitoreo en tiempo real de la calidad del agua</p>
             </div>
-            <div class="p-4 bg-white shadow rounded">
-                <p class="text-sm text-gray-500">pH</p>
-                <p id="pH-data" class="text-xl font-bold">--</p>
-                <div id="ph-status" class="text-xs"></div>
-            </div>
-            <div class="p-4 bg-white shadow rounded">
-                <p class="text-sm text-gray-500">Temperatura</p>
-                <p id="temperatura-data" class="text-xl font-bold">--</p>
-                <div id="temperatura-status" class="text-xs"></div>
-            </div>
-            <div class="p-4 bg-white shadow rounded">
-                <p class="text-sm text-gray-500">Turbidez</p>
-                <p id="turbidez-data" class="text-xl font-bold">--</p>
-                <div id="turbidez-status" class="text-xs"></div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-4 shadow rounded">
-                <h3 class="font-bold mb-2">Conductividad (µS/cm)</h3>
-                <div id="grafica-conductividad" data-id="{{ $boya->id }}" style="height: 300px;"></div>
-            </div>
-            <div class="bg-white p-4 shadow rounded">
-                <h3 class="font-bold mb-2">pH</h3>
-                <div id="graficaPH" style="height: 300px;"></div>
-            </div>
-            <div class="bg-white p-4 shadow rounded">
-                <h3 class="font-bold mb-2">Temperatura (°C)</h3>
-                <div id="grafica-temperatura" style="height: 300px;"></div>
-            </div>
-            <div class="bg-white p-4 shadow rounded">
-                <h3 class="font-bold mb-2">Turbidez (NTU)</h3>
-                <div id="grafica-turbidez" style="height: 300px;"></div>
+            <div class="mt-4 md:mt-0 flex items-center space-x-4">
+                <span id="realtime-badge" class="bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full flex items-center">
+                    <i class="fas fa-circle text-green-500 mr-2 animate-pulse"></i>
+                    Actualizando en tiempo real
+                </span>
+                <div class="text-sm text-gray-500 flex items-center">
+                    <i class="fas fa-sync-alt mr-2"></i>
+                    <span id="last-update">Actualizado ahora</span>
+                </div>
             </div>
         </div>
     </div>
 
+    <div id="diagnostico-general" class="mb-10 p-6 bg-white rounded-xl shadow-lg border-l-8 transition-all duration-300 border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-900 mb-3">Diagnóstico del Agua</h2>
+        <p id="diagnostico-texto" class="text-lg text-gray-700">Cargando diagnóstico...</p>
+        <div id="diagnostico-descripcion" class="mt-4 text-sm text-gray-600 leading-relaxed">Analizando condiciones actuales...</div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 transition-all duration-300 hover:shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-bolt text-blue-600 text-xl"></i></div>
+                <div class="text-right"><span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded">µS/cm</span></div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-semibold mb-2">Conductividad</h3>
+            <div class="flex items-end justify-between">
+                <div class="flex items-baseline"><span id="conductividad-data" class="text-2xl font-bold text-gray-800 animate-pulse">--</span><span class="text-gray-500 text-sm ml-1">µS/cm</span></div>
+                <div id="conductividad-status" class="text-sm font-semibold flex items-center"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 transition-all duration-300 hover:shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-green-600"></div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-tint text-green-600 text-xl"></i></div>
+                <div class="text-right"><span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">pH</span></div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-semibold mb-2">Nivel de pH</h3>
+            <div class="flex items-end justify-between">
+                <div class="flex items-baseline"><span id="pH-data" class="text-2xl font-bold text-gray-800 animate-pulse">--</span><span class="text-gray-500 text-sm ml-1">pH</span></div>
+                <div id="ph-status" class="text-sm font-semibold flex items-center"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 transition-all duration-300 hover:shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-orange-600"></div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center"><i class="fas fa-thermometer-half text-orange-600 text-xl"></i></div>
+                <div class="text-right"><span class="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-1 rounded">°C</span></div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-semibold mb-2">Temperatura</h3>
+            <div class="flex items-end justify-between">
+                <div class="flex items-baseline"><span id="temperatura-data" class="text-2xl font-bold text-gray-800 animate-pulse">--</span><span class="text-gray-500 text-sm ml-1">°C</span></div>
+                <div id="temperatura-status" class="text-sm font-semibold flex items-center"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 transition-all duration-300 hover:shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-purple-600"></div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-eye text-purple-600 text-xl"></i></div>
+                <div class="text-right"><span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-1 rounded">NTU</span></div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-semibold mb-2">Turbidez</h3>
+            <div class="flex items-end justify-between">
+                <div class="flex items-baseline"><span id="turbidez-data" class="text-2xl font-bold text-gray-800 animate-pulse">--</span><span class="text-gray-500 text-sm ml-1">NTU</span></div>
+                <div id="turbidez-status" class="text-sm font-semibold flex items-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-800"><i class="fas fa-bolt text-blue-600 mr-3"></i> Conductividad</h3>
+            <div id="chart-conductividad" data-id="{{ $boya->id }}"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-800"><i class="fas fa-tint text-green-600 mr-3"></i> Nivel de pH</h3>
+            <div id="chart-ph"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-800"><i class="fas fa-thermometer-half text-orange-600 mr-3"></i> Temperatura</h3>
+            <div id="chart-temperatura"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-800"><i class="fas fa-eye text-purple-600 mr-3"></i> Turbidez</h3>
+            <div id="chart-turbidez"></div>
+        </div>
+    </div>
+
     @push('scripts')
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const idBoya = document.getElementById('grafica-conductividad').dataset.id;
-            const apiBase = '{{ url("/api") }}';
-            const chartInstances = {};
+        const API_BASE = '{{ url("/api/boya") }}';
+        const ID_BOYA = document.querySelector('[data-id]').dataset.id;
+        let charts = {};
 
-            // 1. Configuración de Gráfica (Sintaxis V4)
-            function initChart(containerId, color) {
-                const container = document.getElementById(containerId);
-                const chart = LightweightCharts.createChart(container, {
-                    width: container.clientWidth,
-                    height: 300,
-                    layout: { background: { color: '#ffffff' }, textColor: '#333' },
-                    timeScale: { timeVisible: true, secondsVisible: false },
-                });
+        const RANGOS = {
+            ph: [{ min: 6.5, max: 8.5, texto: "Óptimo", color: "text-green-500", icon: "fa-check" }, { min: 6.0, max: 6.49, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: 8.51, max: 9.0, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: -999, max: 999, texto: "Crítico", color: "text-red-500", icon: "fa-times" }],
+            conductividad: [{ min: 200, max: 800, texto: "Óptima", color: "text-green-500", icon: "fa-check" }, { min: 150, max: 199, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: 801, max: 1000, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: -999, max: 9999, texto: "Crítica", color: "text-red-500", icon: "fa-times" }],
+            temperatura: [{ min: 20, max: 28, texto: "Óptima", color: "text-green-500", icon: "fa-check" }, { min: 18, max: 19.9, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: 28.1, max: 30, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: -999, max: 999, texto: "Crítica", color: "text-red-500", icon: "fa-times" }],
+            turbidez: [{ min: -999, max: 5, texto: "Clara", color: "text-green-500", icon: "fa-check" }, { min: 5.01, max: 10, texto: "Mantenimiento", color: "text-yellow-500", icon: "fa-exclamation" }, { min: 10.01, max: 999, texto: "Bacteriológico", color: "text-red-500", icon: "fa-viruses" }]
+        };
 
-                const series = chart.addSeries(LightweightCharts.AreaSeries, {
-                    lineColor: color,
-                    topColor: color + '44',
-                    bottomColor: color + '00',
-                    lineWidth: 2,
-                });
+        const CONFIG_EJES = {
+            ph: { min: 0, max: 14, tickAmount: 7 },
+            conductividad: { min: 0, max: 1200, tickAmount: 6 },
+            temperatura: { min: 0, max: 50, tickAmount: 5 },
+            turbidez: { min: 0, max: 20, tickAmount: 4 }
+        };
 
-                window.addEventListener('resize', () => {
-                    chart.applyOptions({ width: container.clientWidth });
-                });
+        const ZONAS_GRAFICAS = {
+            ph: [
+                { y: 0, y2: 6.5, fillColor: '#EF4444', opacity: 0.1, label: { text: 'Ácido', style: { color: '#EF4444' } } },
+                { y: 6.5, y2: 8.5, fillColor: '#10B981', opacity: 0.1, label: { text: 'Óptimo', style: { color: '#10B981' } } },
+                { y: 8.5, y2: 14, fillColor: '#EF4444', opacity: 0.1, label: { text: 'Alcalino', style: { color: '#EF4444' } } }
+            ],
+            conductividad: [
+                { y: 200, y2: 800, fillColor: '#10B981', opacity: 0.1, label: { text: 'Óptimo' } },
+                { y: 800, y2: 1200, fillColor: '#EF4444', opacity: 0.1, label: { text: 'Alto' } }
+            ],
+            temperatura: [
+                { y: 20, y2: 28, fillColor: '#10B981', opacity: 0.1, label: { text: 'Óptimo' } },
+                { y: 28, y2: 50, fillColor: '#EF4444', opacity: 0.1, label: { text: 'Caliente' } }
+            ],
+            turbidez: [
+                { y: 0, y2: 5, fillColor: '#10B981', opacity: 0.1, label: { text: 'Clara' } },
+                { y: 5, y2: 20, fillColor: '#F59E0B', opacity: 0.1, label: { text: 'Turbia' } }
+            ]
+        };
 
-                return { chart, series };
+        function actualizarCampoUI(id, valor, rangos) {
+            const el = document.getElementById(id);
+            const v = parseFloat(valor);
+            if (!el || isNaN(v)) { 
+                el.innerHTML = `<i class="fas fa-question-circle text-gray-400 mr-1"></i>Sin datos`; 
+                return; 
             }
+            const r = rangos.find(r => v >= r.min && v <= r.max) || rangos[rangos.length-1];
+            el.innerHTML = `<i class="fas ${r.icon} mr-1 ${r.color}"></i><span class="${r.color}">${r.texto}</span>`;
+        }
 
-            // 2. Función para actualizar todo
-            async function refreshAll() {
-                try {
-                    // Obtener último registro (Tarjetas)
-                    const resReg = await fetch(`${apiBase}/boya/${idBoya}/ultimo-registro`);
-                    const d = await resReg.json();
+        function diagnosticoGlobal(vals) {
+            const panel = document.getElementById("diagnostico-general");
+            const texto = document.getElementById("diagnostico-texto");
+            const desc = document.getElementById("diagnostico-descripcion");
+            if (!panel || !texto || !desc) return;
+
+            const getEstado = (param, v) => (RANGOS[param].find(r => v >= r.min && v <= r.max) || RANGOS[param][RANGOS[param].length-1]).texto;
+            const estados = [getEstado("ph", vals.ph), getEstado("temperatura", vals.temperatura), getEstado("conductividad", vals.conductividad), getEstado("turbidez", vals.turbidez)];
+            const malos = estados.filter(e => e === "Crítico" || e === "Bacteriológico" || e === "Crítica").length;
+            const mantenimiento = estados.filter(e => e === "Mantenimiento").length;
+
+            if (malos >= 2) { 
+                texto.textContent = "Rojo → Riesgo bacteriológico"; 
+                desc.textContent = "Varias variables están en estado grave. Recomendado estudio bacteriológico."; 
+                panel.className = "mb-10 p-6 bg-white rounded-xl shadow-lg border-l-8 border-red-500"; 
+            } else if (malos === 1 || mantenimiento >= 2) { 
+                texto.textContent = "Naranja → Requiere tratamiento"; 
+                desc.textContent = "Al menos un parámetro crítico o varios en mantenimiento."; 
+                panel.className = "mb-10 p-6 bg-white rounded-xl shadow-lg border-l-8 border-yellow-500"; 
+            } else { 
+                texto.textContent = "Verde → Agua en estado óptimo"; 
+                desc.textContent = "Todos los parámetros dentro de rango normal."; 
+                panel.className = "mb-10 p-6 bg-white rounded-xl shadow-lg border-l-8 border-green-500"; 
+            }
+        }
+
+        async function actualizarDatosActuales() {
+            try {
+                const res = await fetch(`${API_BASE}/${ID_BOYA}/ultimo-registro`);
+                const d = await res.json();
+                const f = v => (v != null && !isNaN(v)) ? parseFloat(v).toFixed(2) : "--";
+
+                document.getElementById("conductividad-data").textContent = f(d.conductividad);
+                document.getElementById("pH-data").textContent = f(d.ph);
+                document.getElementById("temperatura-data").textContent = f(d.temperatura);
+                document.getElementById("turbidez-data").textContent = f(d.turbidez);
+
+                actualizarCampoUI("ph-status", d.ph, RANGOS.ph);
+                actualizarCampoUI("conductividad-status", d.conductividad, RANGOS.conductividad);
+                actualizarCampoUI("temperatura-status", d.temperatura, RANGOS.temperatura);
+                actualizarCampoUI("turbidez-status", d.turbidez, RANGOS.turbidez);
+
+                diagnosticoGlobal(d);
+                document.getElementById('last-update').textContent = "Actualizado: " + new Date().toLocaleTimeString();
+            } catch (e) { console.error("Error UI:", e); }
+        }
+
+        function syncChart(elementId, data, color, tipo) {
+            const eje = CONFIG_EJES[tipo] || { min: 0, max: 100 };
+            if (!charts[elementId]) {
+                const options = {
+                    chart: { type: 'area', height: 320, animations: { enabled: true }, toolbar: { show: false } },
+                    dataLabels: { enabled: false }, 
+                    colors: [color],
+                    stroke: { curve: 'smooth', width: 3 },
+                    series: [{ name: tipo, data: data }],
+                    xaxis: { type: 'datetime' },
+                    yaxis: { 
+                        min: eje.min, 
+                        max: eje.max, 
+                        tickAmount: eje.tickAmount,
+                        labels: { formatter: (val) => val.toFixed(1) }
+                    },
+                    annotations: { yaxis: ZONAS_GRAFICAS[tipo] || [] },
+                    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.1 } },
+                    // --- CONFIGURACIÓN DEL TOOLTIP (EL CUADRITO) ---
+                    tooltip: {
+                        x: {
+                            show: true,
+                            format: 'dd MMM, HH:mm' // Muestra: 24 Feb, 15:30
+                        },
+                        y: {
+                            formatter: function(val) {
+                                return val.toFixed(2);
+                            }
+                        }
+                    }
+                };
+                charts[elementId] = new ApexCharts(document.querySelector("#" + elementId), options);
+                charts[elementId].render();
+            } else {
+                charts[elementId].updateSeries([{ data: data }]);
+            }
+        }
+
+        async function cargarHistoricos() {
+            try {
+                const res = await fetch(`${API_BASE}/${ID_BOYA}/historico`);
+                const json = await res.json();
+                
+                const parse = (arr) => {
+                    if (!arr) return [];
+                    let fullData = arr.map(i => ({ 
+                        x: new Date(i.created_at).getTime(), 
+                        y: parseFloat(i.valor) 
+                    })).sort((a,b) => a.x - b.x);
                     
-                    document.getElementById("conductividad-data").textContent = d.conductividad || "--";
-                    document.getElementById("pH-data").textContent = d.ph || "--";
-                    document.getElementById("temperatura-data").textContent = d.temperatura || "--";
-                    document.getElementById("turbidez-data").textContent = d.turbidez || "--";
+                    return fullData.slice(-20); 
+                };
 
-                    // Obtener Histórico (Gráficas)
-                    const resHist = await fetch(`${apiBase}/boya/${idBoya}/historico`);
-                    const hist = await resHist.json();
+                syncChart('chart-ph', parse(json.ph), '#10B981', 'ph');
+                syncChart('chart-conductividad', parse(json.conductividad), '#3B82F6', 'conductividad');
+                syncChart('chart-temperatura', parse(json.temperatura), '#F59E0B', 'temperatura');
+                syncChart('chart-turbidez', parse(json.turbidez), '#8B5CF6', 'turbidez');
+            } catch (e) { console.error("Error Gráficas:", e); }
+        }
 
-                    const config = [
-                        { id: 'grafica-conductividad', key: 'conductividad', color: '#2563eb' },
-                        { id: 'graficaPH', key: 'ph', color: '#16a34a' },
-                        { id: 'grafica-temperatura', key: 'temperatura', color: '#ea580c' },
-                        { id: 'grafica-turbidez', key: 'turbidez', color: '#9333ea' }
-                    ];
-
-                    config.forEach(c => {
-                        if (!chartInstances[c.id]) {
-                            chartInstances[c.id] = initChart(c.id, c.color);
-                        }
-                        
-                        // Formatear datos: Lightweight Charts usa 'time' en segundos (Unix)
-                        const rawData = hist[c.key] || [];
-                        const formatted = rawData.map(r => ({
-                            time: Math.floor(new Date(r.created_at).getTime() / 1000),
-                            value: parseFloat(r.valor)
-                        })).sort((a, b) => a.time - b.time);
-
-                        if (formatted.length > 0) {
-                            chartInstances[c.id].series.setData(formatted);
-                            chartInstances[c.id].chart.timeScale().fitContent();
-                        }
-                    });
-
-                    document.getElementById('last-update').textContent = "Actualizado: " + new Date().toLocaleTimeString();
-
-                } catch (e) {
-                    console.error("Error cargando datos:", e);
-                }
-            }
-
-            // Ejecución inicial y ciclo
-            refreshAll();
-            setInterval(refreshAll, 10000);
+        document.addEventListener('DOMContentLoaded', () => {
+            actualizarDatosActuales();
+            cargarHistoricos();
+            setInterval(actualizarDatosActuales, 10000);
+            setInterval(cargarHistoricos, 30000);
         });
     </script>
+    <style>
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
     @endpush
 </x-app-layout>

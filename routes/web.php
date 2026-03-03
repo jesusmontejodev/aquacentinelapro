@@ -16,6 +16,11 @@ Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// Mensaje del día (solo usuarios autenticados y verificados)
+Route::get('/mensajedia', function () {
+    return view('mensajedia');
+})->middleware(['auth', 'verified'])->name('mensajedia');
+
 // Rutas del perfil (solo usuarios logueados, no requiere email verificado)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

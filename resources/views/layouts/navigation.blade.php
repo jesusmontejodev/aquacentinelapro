@@ -21,6 +21,12 @@
             {{ __('Mis Boyas') }}
         </x-nav-link>
 
+        <!-- Mensaje del Día -->
+        <x-nav-link :href="route('mensajedia')" :active="request()->routeIs('mensajedia')">
+            <i class="fas fa-calendar-day w-5 mr-3 text-center"></i>
+            {{ __('Mensaje del Día') }}
+        </x-nav-link>
+
         <!-- Rutas de Usuario Normal -->
         @if(!Auth::user()->isAdmin())
             <x-nav-link :href="route('boya.claim')" :active="request()->routeIs('boya.claim')">
